@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>绷带计算</title>
+    <style>
+        .parameter-row {
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+        }
+        .input-box {
+            width: 60px;
+            margin: 0 5px;
+            vertical-align: middle;
+            display: inline-block;
+        }
+        .calculate-btn {
+            padding: 8px 16px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+            margin-top: 15px;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f0f0f0;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <!-- 动态生成的表单域 -->
+    </div>
+
+    <script>
+        let monsterHurt1;// 第一只怪攻击力
+        let monsterHurt2;// 第二只怪攻击力
+        let animalNumber;// 小动物数量
+        let animalNumbercopy;// 小动物数量副本
+        let skillNumber;// 技能次数
+        let skillNumbercopy;// 技能次数副本
+        let bandageNumber ;// 绷带数量
+        let bandageNumbercopy;// 绷带数量副本
+        let bandage5Number;// 快速回血5的数量
+        let bandage5Numbercopy;// 快速回血5的数量副本
+        let enemyBlood ;// 敌方血量
+        let enemyBloodNow ;// 敌方当前血量
+        let enemyBloodMax;// 敌方血量上限
+        let enemyArmor ;// 敌方护甲
+        let enemyArmorNow ;// 敌方当前护甲
+        let enemyBlock ;// 敌方抵挡次数
+        let Sequence = [];
+        let hurtarr = [];
+        let huifuarr = [];
+        let monsterRes;
+        let resbloodarr = [];
+        // 参数配置
+        const parameters = [
+            {prefix:'己方：',noinput:true},
+            { prefix: '一张（', suffix: '）攻', default: 7 },
+            { prefix: '一张（', suffix: '）攻', default: 0 },
+            { prefix: '（', suffix: '）张小动物', default: 0 },
+            { prefix: '（', suffix: '）次技能', default: 0 },
+            { prefix: '（', suffix: '）张绷带', default: 0 },
+            { prefix: '（', suffix: '）张快速回5血', default: 0 },
+            {prefix:'对面:',noinput:true},
+            { prefix: '（', suffix: '）血', default: 30 },
+            { prefix: '血上限（', suffix: '）血', default: 30 },
+            { prefix: '（', suffix: '）甲', default: 0 },
+            { prefix: '抵挡（', suffix: '）次伤害', default: 0 },
+            // { prefix: '下一次（', suffix: '）点疲劳', default: 0 }
+        ];
+        const SequenceList = [
+            '绷带', '技能', '快速回血5血', '小动物'
+        ];
+
+        // 动态生成表单
+        const container = document.getElementById('app');
+        
+        parameters.forEach((param, index) => {
+            const div = document.createElement('div');
+            div.className = 'parameter-row';
+            
+            // 创建文本节点
+            const prefixText = document.createTextNode(param.prefix);
+            
+            // 创建输入框
+            const input = document.createElement('input');
+            input.type = 'number';
+            input.className = 'input-box';
+            input.value = param.default;
+            input.dataset.index = index;
+            
+            // 创建后缀文本
+            const suffixText = document.createTextNode(param.suffix);
+            if(param.noinput) {
+                div.appendChild(prefixText);
+            }else{
+                // 组合元素
+                div.appendChild(prefixText);
+                div.appendChild(input);
+                div.appendChild(suffixText);
+            }
+            
+            
+            // 添加到容器
+            container.appendChild(div);
+        });
+
+        // 添加计算按钮
+        const button = document.createElement('button');
+        button.className = 'calculate-btn';
+        button.textContent = '计算';
+        button.onclick = calculate;
+        container.appendChild(button);
+
+        // 添加结果显示区域
+        const resultDiv = document.createElement('div');
+        resultDiv.className = 'result';
+        resultDiv.id = 'result';
+        container.appendChild(resultDiv);
+
+        function difcal(dif){
+            console.log(enemyBloodMax,enemyBloodNow,'123123')
+            dif = Math.min(dif,enemyBloodMax-enemyBloodNow);
+
+            if(enemyBlock > 0){
+                let Frequency = monsterHurt2>0 ? 2 : 1;
+                if(enemyBlock>= Frequency){
+                    enemyBlock -= Frequency;
+                    hurtarr.push(0)
+                    return;
+                }else{
+                    if(enemyArmorNow>0){
+                        enemyArmorNow -= monsterHurt1;
+                        if(enemyArmorNow < 0){
+                            enemyBloodNow += enemyArmorNow;
+                            enemyArmorNow = 0;
+                        }
+                    }else{
+                        enemyBloodNow = enemyBloodNow - monsterHurt1;
+                    }
+                    hurtarr.push(monsterHurt1);
+                }
+            }else{
+                if(enemyArmorNow>0){
+                    enemyArmorNow -= monsterRes;
+                    if(enemyArmorNow < 0){
+                        enemyBloodNow += enemyArmorNow;
+                        enemyArmorNow = 0;
+                    }
+                }else{
+                    enemyBloodNow = enemyBloodNow - monsterRes;
+                }
+                hurtarr.push(monsterRes);
+            }
+            
+            
+            if(enemyBloodNow > 0){
+                enemyBloodNow += dif;
+                huifuarr.push(dif);
+            }
+            resbloodarr.push(enemyBloodNow);
+        }
+
+        // 计算函数
+        function calculate() {
+            // 获取所有输入值
+            const inputs = document.querySelectorAll('.input-box');
+            const values = Array.from(inputs).map(input => parseInt(input.value) || 0);
+            console.log(values);
+
+            monsterHurt1 = values[0];// 第一只怪攻击力
+            monsterHurt2 = values[1];// 第二只怪攻击力
+            animalNumber = values[2];// 小动物数量
+            animalNumbercopy = animalNumber;// 小动物数量副本
+            skillNumber = values[3];// 技能次数
+            skillNumbercopy = skillNumber;// 技能次数副本
+            bandageNumber = values[4];// 绷带数量
+            bandageNumbercopy = bandageNumber;// 绷带数量副本
+            bandage5Number = values[5];// 快速回血5的数量
+            bandage5Numbercopy = bandage5Number;// 快速回血5的数量副本
+            enemyBlood = values[6];// 敌方血量
+            enemyBloodNow = enemyBlood;// 敌方当前血量
+            enemyBloodMax = values[7];// 敌方血量上限
+            enemyArmor = values[8];// 敌方护甲
+            enemyArmorNow = enemyArmor;// 敌方当前护甲
+            enemyBlock = values[9];// 敌方抵挡次数
+            Sequence = [];
+            monsterRes = monsterHurt1 + monsterHurt2;
+            hurtarr = [];
+            huifuarr = [];
+            resbloodarr = [];
+            // let enemyFatigue = values[9];// 敌方疲劳点
+
+            // 计算逻辑 有甲的时候用回血多的奶，没甲满血用回血多的奶，还剩下多的奶放最后一次斩杀，其余的随便放
+            //一张快速回血放最后，2费技能放不满血的时候
+            //这是呆逼版本，不呆逼版本应该是三种数量>0的情况下，三种都算一下，扣的+回的，选扣最多的，一样的情况下优先级为5，3，2
+            while((animalNumber != 0 || skillNumber != 0 || bandageNumber != 0 || bandage5Number != 0)&&  enemyBloodNow > 0){
+                if(bandage5Number > 1){
+                    Sequence.push(SequenceList[2]);
+                    bandage5Number--;
+                    let dif = 5;
+                    difcal(dif);
+                }else if(bandageNumber > 1){
+                    Sequence.push(SequenceList[0]);
+                    bandageNumber--;
+                    let dif = 3;
+                    difcal(dif);
+                    
+                }else if(skillNumber > 0){
+                    Sequence.push(SequenceList[1]);
+                    skillNumber--;
+                    let dif = 2;
+                    difcal(dif);
+                }else if(bandageNumber>0){
+                    Sequence.push(SequenceList[0]);
+                    bandageNumber--;
+                    let dif = 3;
+                    difcal(dif);
+                }else if(bandage5Number > 0){
+                    Sequence.push(SequenceList[2]);
+                    bandage5Number--;
+                    let dif = 5;
+                    difcal(dif);
+                }else if(animalNumber > 0){
+                    Sequence.push(SequenceList[3]);
+                    animalNumber--;
+                    let dif = 2;
+                    difcal(dif);
+                }
+            }
+
+            
+            // 示例计算逻辑（需要根据实际需求修改）
+            const harm = enemyArmor+enemyBlood-enemyBloodNow;  
+            let usetxt='';
+            if(bandageNumbercopy - bandageNumber > 0){
+                usetxt += `${bandageNumbercopy - bandageNumber}个绷带,`;
+            }
+            if(skillNumbercopy - skillNumber > 0){
+                usetxt += `${skillNumbercopy - skillNumber}次技能,`;
+            }
+            if(bandage5Numbercopy - bandage5Number > 0){
+                usetxt += `${bandage5Numbercopy - bandage5Number}个快速回血5血,`;
+            }
+            if(animalNumbercopy - animalNumber > 0){
+                usetxt += `${animalNumbercopy - animalNumber}个小动物,`;
+            }
+            const txt =  harm>=enemyArmor+enemyBlood ? '能斩杀' : '不能斩杀';
+            console.log(hurtarr,huifuarr,resbloodarr,'伤害数组');
+            // 显示结果
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = `
+                <p>造成 ${harm} 点伤害,使用了${usetxt}${txt}</p>
+                <p>释放顺序：${Sequence.join(',')}</p>
+            `;
+        }
+    </script>
+</body>
+</html>
